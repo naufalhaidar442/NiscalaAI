@@ -1,5 +1,11 @@
 FROM ollama/ollama:0.32.15
 
+# Simpan llama-server asli
+RUN mv /usr/lib/ollama/llama-server /usr/lib/ollama/llama-server.real && \
+    printf '#!/bin/sh\nexec /usr/lib/ollama/llama-server.real "$@" --no-warmup\n' \
+    > /usr/lib/ollama/llama-server && \
+    chmod +x /usr/lib/ollama/llama-server
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
