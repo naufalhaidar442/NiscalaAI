@@ -2,9 +2,7 @@ FROM ollama/ollama:0.32.15
 
 # Backup llama-server asli
 RUN mv /usr/lib/ollama/llama-server /usr/lib/ollama/llama-server.real && \
-    printf '#!/bin/sh\n\
-echo "[wrapper] llama-server started with no-warmup" >&2\n\
-exec /usr/lib/ollama/llama-server.real "$@" --no-warmup\n' \
+    printf '#!/bin/sh\nexec /usr/lib/ollama/llama-server.real "$@" --no-warmup --no-context-shift\n' \
     > /usr/lib/ollama/llama-server && \
     chmod +x /usr/lib/ollama/llama-server
 
