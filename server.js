@@ -5,15 +5,17 @@ const path = require('path');
 const crypto = require('crypto');
 const { URL } = require('url');
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const ROOT = __dirname;
-const STORY_DIR = path.join(ROOT, 'story');
-const DATA_DIR = path.join(ROOT, 'data');   // data/<googleUserId>/<chatId>.json
-const AUTH_DIR = path.join(ROOT, 'auth');   // sessions.json
+// DATA_ROOT: arahkan ke persistent disk (mis. /var/data) agar data tidak hilang saat restart
+const STORE = process.env.DATA_ROOT || ROOT;
+const STORY_DIR = path.join(STORE, 'story');
+const DATA_DIR = path.join(STORE, 'data');   // data/<googleUserId>/<chatId>.json
+const AUTH_DIR = path.join(STORE, 'auth');   // sessions.json
 
 // ===== GOOGLE LOGIN =====
 // Isi dari Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web)
-const GOOGLE_CLIENT_ID = '230132707860-e18s9hlga0039qrlme7s31lp41s8bf31.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '230132707860-e18s9hlga0039qrlme7s31lp41s8bf31.apps.googleusercontent.com';
 // Kosongkan [] = semua akun Google boleh masuk. Isi untuk membatasi, mis. ['kamu@gmail.com']
 const ALLOWED_EMAILS = [];
 const SESSION_TTL = 30 * 24 * 3600 * 1000; // 30 hari
@@ -75,7 +77,7 @@ function getSession(req) {
 }
 function setCookie(res, sid, maxAgeSec) {
   // Kalau nanti pakai HTTPS, tambahkan "; Secure"
-  res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAgeSec}`);
+  res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAgeSec}${process.env.RENDER ? '; Secure' : ''}`);
 }
 
 async function verifyGoogle(credential) {
@@ -421,44 +423,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // ===== CHAT PROXY (lama, sekarang wajib login) =====
-    if (p === '/api/chat' && req.method === 'POST') {
-      const body = JSON.parse(await readBody(req));
-      const payload = {
-        model: body.model || RUNPOD_MODEL,
-        messages: body.messages,
-        max_tokens: body.max_tokens ?? 2000,
-        temperature: body.temperature ?? 0.85,
-        stream: !!body.stream
-      };
-      const upstream = await fetch(RUNPOD_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + RUNPOD_KEY },
-        body: JSON.stringify(payload)
-      });
-      if (!upstream.ok) {
-        const t = await upstream.text().catch(() => '');
-        return json(res, 502, { error: `RunPod ${upstream.status}: ${t.slice(0, 300)}` });
-      }
-      if (payload.stream) {
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream; charset=utf-8',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        });
-        const reader = upstream.body.getReader();
-        const dec = new TextDecoder();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            res.write(dec.decode(value, { stream: true }));
-          }
-        } finally { res.end(); }
-        return;
-      }
-      return json(res, 200, await upstream.json());
-    }
+    // /api/chat (proxy lama) dihapus: melewati sistem koin.
 
     if (p.startsWith('/api/')) return json(res, 404, { error: 'not found' });
 
@@ -489,7 +454,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 http://localhost:${PORT}`);
   console.log(`   story/  ← ${STORY_DIR}`);
   console.log(`   data/   ← ${DATA_DIR}  (per user)`);

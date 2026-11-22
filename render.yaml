@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: storyverse
+    runtime: node
+    plan: free
+    buildCommand: "echo no build"
+    startCommand: node server.js
+    healthCheckPath: /login.html
+    envVars:
+      - key: RUNPOD_KEY
+        sync: false
+      - key: INITIAL_COINS
+        value: "300"
