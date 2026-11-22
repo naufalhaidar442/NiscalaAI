@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masuk — My Stories</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #11131a; color: #eee;
+           min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .box { background: #191c26; border: 1px solid #303442; border-radius: 14px; padding: 36px 32px;
+           text-align: center; max-width: 380px; width: 100%; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    h1 span { color: #7658dc; }
+    p { color: #999; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+    #btn { display: flex; justify-content: center; min-height: 44px; }
+    #err { color: #ff5c7c; font-size: 13px; margin-top: 16px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>📚 My <span>Stories</span></h1>
+    <p>Masuk dengan Google supaya riwayat chat kamu tersimpan di akunmu sendiri.</p>
+    <div id="btn"></div>
+    <div id="err"></div>
+  </div>
+
+  <script>
+    const err = document.getElementById('err');
+
+    async function onCredential(resp) {
+      err.textContent = '';
+      try {
+        const r = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: resp.credential })
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || 'Login gagal');
+        location.href = 'index.html';
+      } catch (e) {
+        err.textContent = e.message;
+      }
+    }
+
+    let tries = 0;
+    async function init() {
+      try {
+        // Kalau sudah login, langsung ke halaman utama
+        const me = await fetch('/api/me');
+        if (me.ok) { location.href = 'index.html'; return; }
+
+        const cfgRes = await fetch('/api/auth/config');
+        if (!cfgRes.ok) throw new Error('Server belum versi terbaru (/api/auth/config tidak ada). Timpa server.js lalu restart node.');
+        const cfg = await cfgRes.json();
+
+        if (!cfg.clientId || cfg.clientId.includes('ISI_CLIENT_ID')) {
+          throw new Error('GOOGLE_CLIENT_ID di server.js belum diisi (atau server belum di-restart setelah diisi).');
+        }
+
+        if (!window.google?.accounts?.id) {
+          if (++tries > 20) throw new Error('Script Google (accounts.google.com/gsi/client) tidak termuat. Cek internet atau matikan adblock/shield untuk halaman ini.');
+          return setTimeout(init, 300);
+        }
+
+        google.accounts.id.initialize({ client_id: cfg.clientId, callback: onCredential });
+        google.accounts.id.renderButton(document.getElementById('btn'),
+          { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' });
+
+        // Kalau 2 detik tombol tetap kosong, hampir pasti masalah origin / client ID di Google
+        setTimeout(() => {
+          if (!document.getElementById('btn').children.length) {
+            err.textContent = 'Tombol tidak muncul. Pastikan "' + location.origin +
+              '" ada di Authorized JavaScript origins pada Client ID, dan Client ID-nya benar. Detail ada di Console (F12).';
+          }
+        }, 2000);
+      } catch (e) {
+        err.textContent = e.message;
+        console.error(e);
+      }
+    }
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

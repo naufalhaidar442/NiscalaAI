@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buat Cerita</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #11131a;
+      color: #eee;
+      min-height: 100vh;
+      padding: 32px 24px;
+    }
+
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      gap: 16px;
+    }
+
+    h1 {
+      font-size: 24px;
+    }
+
+    h1 span {
+      color: #7658dc;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 20px;
+      background: #7658dc;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      font-family: inherit;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      border: 1px solid #414658;
+      color: #eee;
+    }
+
+    .btn.ghost:hover {
+      border-color: #7658dc;
+    }
+
+    .btn.danger {
+      background: transparent;
+      border: 1px solid #ff5c7c;
+      color: #ff5c7c;
+    }
+
+    .btn.danger:hover {
+      background: rgba(255, 92, 124, 0.1);
+    }
+
+    .btn.small {
+      padding: 7px 12px;
+      font-size: 12px;
+    }
+
+    .card {
+      background: #191c26;
+      border: 1px solid #303442;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #bbb;
+      margin-bottom: 6px;
+      margin-top: 14px;
+    }
+
+    label:first-of-type {
+      margin-top: 0;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 11px 14px;
+      background: #272b38;
+      border: 1px solid #414658;
+      color: #fff;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #7658dc;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+      line-height: 1.6;
+    }
+
+    textarea.tall {
+      min-height: 180px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 600px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .char-item {
+      background: #272b38;
+      border: 1px solid #303442;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .char-item .remove {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      border: none;
+      color: #ff5c7c;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 2px 8px;
+      line-height: 1;
+    }
+
+    .char-item .remove:hover {
+      background: rgba(255, 92, 124, 0.1);
+      border-radius: 4px;
+    }
+
+    .actions-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #777;
+      margin-top: 4px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #4ade80;
+      color: #000;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .toast.error {
+      background: #ff5c7c;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1 id="pageTitle">Buat <span>Cerita</span></h1>
+      <a href="index.html" class="btn ghost">← Kembali</a>
+    </header>
+
+    <div class="card">
+      <h2>Informasi Cerita</h2>
+      <label>Judul *</label>
+      <input id="fTitle" placeholder="Mis. Hannah's Possession">
+
+      <label>Genre (pisahkan dengan koma)</label>
+      <input id="fGenres" placeholder="Fantasy, Romance, Adventure">
+      <div class="hint">Contoh: Fantasy, Romance, Mystery. Genre dipakai untuk filter di beranda.</div>
+
+      <label>Deskripsi Cerita</label>
+      <textarea id="fDesc" placeholder="Ringkasan cerita, latar dunia, aturan, dll."></textarea>
+
+      <label>Pesan Pembuka (Opening Message)</label>
+      <textarea id="fOpening" class="tall"
+        placeholder="Pesan pertama yang muncul saat cerita dimulai. Gunakan *narasi* dan Nama: &quot;dialog&quot;."></textarea>
+
+      <div class="row">
+        <div>
+          <label>Rating</label>
+          <select id="fNsfw">
+            <option value="false">SFW</option>
+            <option value="true">NSFW</option>
+          </select>
+        </div>
+        <div>
+          <label>Creator Prompt (opsional)</label>
+          <input id="fCreator" placeholder="Instruksi khusus untuk AI">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Karakter</h2>
+      <div id="charList"></div>
+      <button class="btn ghost small" onclick="addCharacter()" style="margin-top: 8px">
+        + Tambah Karakter
+      </button>
+      <div class="hint">Minimal 1 karakter. Nama karakter akan dipakai sebagai label dialog.</div>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn" onclick="saveStory()">💾 Simpan Cerita</button>
+      <a href="index.html" class="btn ghost">Batal</a>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const DEFAULT_SITE_PROMPT = `### ROLEPLAY WRITING STYLE
+
+Write immersive, detailed, third-person narrative roleplay responses in a cinematic novel style.
+
+**Narration:**
+- Describe character expressions, body language, gestures, movements, atmosphere, and surroundings in rich, flowing detail.
+- Show emotions through actions, facial expressions, tone of voice, and subtle physical reactions instead of simply stating emotions.
+- Use vivid but natural prose — conversational, modern English, not stiff or academic. Make scenes feel alive and immersive.
+- Maintain continuity with previous events, character personalities, relationships, and established world lore.
+- Narration should generally consist of multiple substantial paragraphs, not just one or two sentences.
+- Avoid flat, robotic, or repetitive description. Vary sentence structure and rhythm.
+
+**Dialogue:**
+- Format all character dialogue like this: CharacterName: "Dialogue goes here."
+- Example: Hannah: "I have... arrived... home."
+- Write dialogue in natural, everyday English — contractions, slang, hesitations, and imperfect speech are welcome. Avoid formal or bookish phrasing.
+- Give each character a distinct voice and speaking style.
+- Include dialogue naturally between narrative paragraphs.
+- Characters should react meaningfully to what other characters say and do.
+
+**Player input handling:**
+- The player's message is a story prompt — it sets the direction of the scene.
+- You may echo, refine, or expand the player's action and dialogue naturally as part of the narrative flow.
+- Do NOT invent new actions, thoughts, or decisions for the player beyond what they wrote. Build on what they gave you, not replace it.
+
+**Scene progression:**
+- Each response should advance the scene through a combination of narration, character reactions, and dialogue.
+- Do not rush through important emotional moments.
+- Do not summarize events that should be experienced through roleplay.
+- Do not repeat the same information or describe the same action multiple times.
+
+**Formatting:**
+- Use separate paragraphs for narration and dialogue.
+- Preserve special image tags and formatting such as {{url}}G/G12.webp when appropriate.
+- Never write the user's character's dialogue, thoughts, decisions, or actions unless explicitly instructed.
+
+**Length:**
+- Aim for 1,500–3,000 characters.
+- Never exceed the 4,000-character limit.
+- Prioritize coherent storytelling over reaching a specific word count.
+- End at a natural point where the user can continue the roleplay.`;
+
+    let editingId = null;
+
+    function toast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.className = 'toast', 2200);
+    }
+    function escapeAttr(s) { return String(s || '').replace(/"/g, '&quot;'); }
+    function escapeText(s) { return String(s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+
+    async function api(url, opts) {
+      const res = await fetch(url, opts);
+      if (!res.ok) throw new Error((await res.text()).slice(0, 200));
+      return res.json();
+    }
+
+    function addCharacter(data = {}) {
+      const div = document.createElement('div');
+      div.className = 'char-item';
+      div.innerHTML = `
+    <button class="remove" onclick="this.parentElement.remove()" title="Hapus">×</button>
+    <div class="row">
+      <div>
+        <label>Nama Karakter *</label>
+        <input class="c-name" placeholder="Hannah" value="${escapeAttr(data.name || '')}">
+      </div>
+      <div>
+        <label>Deskripsi</label>
+        <input class="c-desc" placeholder="Istri Naufal..." value="${escapeAttr(data.description || '')}">
+      </div>
+    </div>
+    <label>Identitas / kepribadian / cara bicara</label>
+    <textarea class="c-identity" rows="3">${escapeText(data.identity || '')}</textarea>
+  `;
+      document.getElementById('charList').appendChild(div);
+    }
+    function collectCharacters() {
+      return [...document.querySelectorAll('.char-item')].map(i => ({
+        name: i.querySelector('.c-name').value.trim(),
+        description: i.querySelector('.c-desc').value.trim(),
+        identity: i.querySelector('.c-identity').value.trim()
+      })).filter(c => c.name);
+    }
+
+    async function saveStory() {
+      const title = document.getElementById('fTitle').value.trim();
+      if (!title) return toast('Judul wajib diisi', true);
+      const opening = document.getElementById('fOpening').value.trim();
+      if (!opening) return toast('Pesan pembuka wajib diisi', true);
+      const characters = collectCharacters();
+      if (characters.length === 0) return toast('Minimal 1 karakter', true);
+
+      const story = {
+        id: editingId || ('story_' + Date.now()),
+        title,
+        story_description: document.getElementById('fDesc').value.trim(),
+        genres: document.getElementById('fGenres').value.split(',').map(g => g.trim()).filter(Boolean),
+        opening_message: opening,
+        nsfw: document.getElementById('fNsfw').value === 'true',
+        creator_prompt: document.getElementById('fCreator').value.trim(),
+        site_prompt: DEFAULT_SITE_PROMPT,
+        characters
+      };
+
+      try {
+        await api('/api/stories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(story)
+        });
+        toast('✅ Cerita tersimpan');
+        setTimeout(() => location.href = 'index.html', 600);
+      } catch (e) { toast('❌ ' + e.message, true); }
+    }
+
+    async function loadForEdit(id) {
+      try {
+        const story = await api('/api/stories/' + id);
+        editingId = id;
+        document.getElementById('pageTitle').innerHTML = 'Edit <span>Cerita</span>';
+        document.getElementById('fTitle').value = story.title || '';
+        document.getElementById('fDesc').value = story.story_description || '';
+        document.getElementById('fGenres').value = (story.genres || (story.genre ? [story.genre] : [])).join(', ');
+        document.getElementById('fOpening').value = story.opening_message || '';
+        document.getElementById('fNsfw').value = String(!!story.nsfw);
+        document.getElementById('fCreator').value = story.creator_prompt || '';
+        document.getElementById('charList').innerHTML = '';
+        (story.characters || []).forEach(addCharacter);
+      } catch (e) { toast('Gagal memuat: ' + e.message, true); }
+    }
+
+    const params = new URLSearchParams(location.search);
+    const editId = params.get('id');
+    if (editId) loadForEdit(editId); else addCharacter();
+  </script>
+
+  <script src="auth.js"></script>
+</body>
+
+</html>

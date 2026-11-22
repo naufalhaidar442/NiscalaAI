@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <script src="auth.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #11131a;
+      color: #eee;
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: #191c26;
+      padding: 20px;
+      border-right: 1px solid #303442;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .brand {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .character {
+      padding: 15px;
+      background: #272b38;
+      border-radius: 12px;
+    }
+
+    .character h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .character p {
+      color: #aaa;
+      font-size: 13px;
+      margin: 0;
+    }
+
+    button,
+    .btn-link {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 15px;
+      background: #7658dc;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+      display: block;
+    }
+
+    button:hover,
+    .btn-link:hover {
+      opacity: .85;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .secondary {
+      background: #353949;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .topbar {
+      padding: 16px 22px;
+      background: #191c26;
+      border-bottom: 1px solid #303442;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .message {
+      max-width: 75%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      position: relative;
+    }
+
+    .ai {
+      align-self: flex-start;
+      background: #272b38;
+    }
+
+    .user {
+      align-self: flex-end;
+      background: #6246bd;
+    }
+
+    .sender {
+      font-size: 11px;
+      color: #b9b0db;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .msg-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+
+    .message:hover .msg-actions {
+      opacity: 1;
+    }
+
+    .msg-btn {
+      background: transparent;
+      border: 1px solid #414658;
+      color: #bbb;
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 500;
+      display: inline-block;
+      width: auto;
+    }
+
+    .msg-btn:hover {
+      border-color: #7658dc;
+      color: #fff;
+    }
+
+    .edit-area {
+      width: 100%;
+      background: #11131a;
+      color: #eee;
+      border: 1px solid #7658dc;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 80px;
+      margin-top: 6px;
+    }
+
+    .input-area {
+      padding: 15px 20px;
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: #191c26;
+    }
+
+    .input-area button {
+      height: 48px;
+      flex-shrink: 0;
+    }
+
+    .input-area textarea {
+      flex: 1;
+      resize: none;
+      height: 48px;
+      min-height: 48px;
+      max-height: 30vh;
+      max-height: 30dvh;
+      overflow-y: hidden;
+      line-height: 1.4;
+      background: #272b38;
+      border: 1px solid #414658;
+      color: #fff;
+      border-radius: 10px;
+      padding: 13px;
+      font: inherit;
+    }
+
+    .input-area textarea:focus {
+      outline: none;
+      border-color: #7658dc;
+    }
+
+    @media(max-width:650px) {
+      .sidebar {
+        width: 90px;
+        padding: 10px;
+      }
+
+      .brand {
+        font-size: 14px;
+      }
+
+      .character p,
+      .character h3 {
+        display: none;
+      }
+
+      .character {
+        padding: 10px 5px;
+      }
+
+      .message {
+        max-width: 90%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">Chat</div>
+      <div class="character">
+        <h3 id="sideName">Memuat…</h3>
+        <p id="sideDescription"></p>
+      </div>
+      <a href="index.html" class="btn-link secondary">← Daftar Cerita</a>
+      <a id="editLink" href="index.html" class="btn-link secondary">✏️ Edit Cerita</a>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div><h3 id="chatName">Memuat…</h3><small id="walletInfo" style="color:#aaa">Memuat saldo…</small></div>
+        <a href="index.html" class="btn-link secondary" style="padding:8px 14px;font-size:13px">← Kembali</a>
+      </header>
+
+      <section class="messages" id="messages"></section>
+
+      <footer class="input-area">
+        <textarea id="userInput" placeholder="Ketik pesan..." rows="1" oninput="autoResize()"
+          onkeydown="handleKey(event)"></textarea>
+        <button onclick="sendMessage()" id="sendBtn">Kirim</button>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const API_CONFIG = {
+      maxTokens: 2000, temperature: 0.85, stream: false
+    };
+
+    let story = null;
+    let chat = null;
+    let sending = false;
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&quot;'.replace('"', '&quot;') }[c] || c));
+    }
+    async function api(url, opts) {
+      const res = await fetch(url, opts);
+      if (!res.ok) throw new Error((await res.text()).slice(0, 200));
+      return res.json();
+    }
+
+    async function refreshWallet() {
+      try {
+        const w = await api('/api/wallet');
+        document.getElementById('walletInfo').textContent = w.unlimited
+          ? '✦ Unlimited aktif'
+          : `◈ ${w.coins} koin · ${w.replyCost} koin / jawaban AI`;
+      } catch { document.getElementById('walletInfo').textContent = 'Saldo tidak tersedia'; }
+    }
+
+    // ===== BUILD PROMPT =====
+    function buildSystemPrompt() {
+      const charList = (story.characters || []).map(c =>
+        `- ${c.name}${c.description ? ': ' + c.description : ''}${c.identity ? '\n  Identity: ' + c.identity : ''}`
+      ).join('\n');
+      return `
+${story.site_prompt}
+
+=== CHARACTERS ===
+${charList || '(no characters defined)'}
+
+=== STORY DESCRIPTION ===
+${story.story_description || '(no description)'}
+
+=== CREATOR PROMPT ===
+${story.creator_prompt || '(none)'}
+
+=== ROLEPLAY RULES ===
+- Stay in character at all times.
+- Never forget previous events.
+- Develop the story based on the user's actions.
+- Do not write the user's dialogue, thoughts, or decisions.
+- Maintain continuity of time, place, and events.
+`.trim();
+    }
+
+    function buildMessages(untilIndex) {
+      const history = untilIndex != null ? chat.messages.slice(0, untilIndex) : chat.messages;
+      const msgs = [{ role: 'system', content: buildSystemPrompt() }];
+      for (const m of history) {
+        if (m.role === 'assistant' && /^Error: /.test(m.content)) continue; // jangan kirim pesan error ke model
+        msgs.push({ role: m.role, content: m.content });
+      }
+      return msgs;
+    }
+
+    // ===== RENDER =====
+    function renderMessages() {
+      const c = document.getElementById('messages');
+      c.innerHTML = '';
+      const charName = story.characters?.[0]?.name || 'AI';
+
+      chat.messages.forEach((msg, idx) => {
+        const bubble = document.createElement('div');
+        bubble.className = 'message ' + (msg.role === 'user' ? 'user' : 'ai');
+
+        const sender = document.createElement('div');
+        sender.className = 'sender';
+        sender.textContent = msg.role === 'user' ? 'You' : charName;
+
+        const content = document.createElement('div');
+        content.className = 'msg-content';
+        content.textContent = msg.content;
+
+        const actions = document.createElement('div');
+        actions.className = 'msg-actions';
+        actions.innerHTML = `
+      <button class="msg-btn" onclick="editMessage(${idx})">✏️ Edit</button>
+      ${msg.role === 'user'
+            ? `<button class="msg-btn" onclick="regenerate(${idx})">🔄 Regenerate AI</button>`
+            : `<button class="msg-btn" onclick="regenerate(${idx})">🔄 Regenerate</button>`}
+    `;
+
+        bubble.append(sender, content, actions);
+        c.appendChild(bubble);
+      });
+      c.scrollTop = c.scrollHeight;
+    }
+
+    async function persist() {
+      chat.updatedAt = Date.now();
+      await api('/api/chats/' + chat.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(chat)
+      });
+    }
+
+    // ===== EDIT MESSAGE =====
+    function editMessage(idx) {
+      const bubble = document.querySelectorAll('#messages .message')[idx];
+      if (!bubble) return;
+      const contentEl = bubble.querySelector('.msg-content');
+      const original = chat.messages[idx].content;
+
+      contentEl.innerHTML = '';
+      const ta = document.createElement('textarea');
+      ta.className = 'edit-area';
+      ta.value = original;
+
+      const actions = document.createElement('div');
+      actions.style.marginTop = '8px';
+      actions.style.display = 'flex';
+      actions.style.gap = '6px';
+      actions.innerHTML = `
+    <button class="msg-btn" onclick="saveEdit(${idx}, this)">💾 Simpan</button>
+    <button class="msg-btn" onclick="renderMessages()">✖ Batal</button>
+  `;
+
+      contentEl.appendChild(ta);
+      bubble.querySelector('.msg-actions').replaceWith(actions);
+    }
+
+    async function saveEdit(idx, btn) {
+      const bubble = btn.closest('.message');
+      const ta = bubble.querySelector('.edit-area');
+      const newText = ta.value.trim();
+      if (!newText) return;
+
+      chat.messages[idx].content = newText;
+      await persist();
+      renderMessages();
+    }
+
+    // ===== REGENERATE =====
+    async function regenerate(idx) {
+      if (sending) return;
+      const target = chat.messages[idx];
+      if (!target) return;
+
+      // Kalau target adalah pesan AI → regenerate pesan AI itu
+      // Kalau target adalah pesan user → hapus semua pesan AI setelahnya, regenerate AI berikutnya
+      let cutIndex;
+      if (target.role === 'assistant') {
+        cutIndex = idx; // potong dari idx
+      } else {
+        cutIndex = idx + 1; // pertahankan user message, potong setelahnya
+      }
+
+      if (!confirm('Regenerate jawaban AI? Pesan setelah titik ini akan dihapus.')) return;
+
+      // Siapkan messages untuk AI: history sampai cutIndex
+      const promptMessages = buildMessages(cutIndex);
+
+      // Potong history
+      chat.messages = chat.messages.slice(0, cutIndex);
+
+      await persist();
+      renderMessages();
+
+      try {
+        await startGeneration(promptMessages);
+      } catch (e) {
+        alert('Gagal: ' + e.message);
+      }
+    }
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    async function startGeneration(promptMessages) {
+      try {
+        await api('/api/chats/' + chat.id + '/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: promptMessages,
+            max_tokens: API_CONFIG.maxTokens,
+            temperature: API_CONFIG.temperature
+          })
+        });
+        return await waitForJob();
+      } finally { refreshWallet(); }
+    }
+
+    async function waitForJob() {
+      const button = document.getElementById('sendBtn');
+      sending = true;
+      button.disabled = true;
+      button.textContent = '...';
+
+      const container = document.getElementById('messages');
+      const bubble = document.createElement('div');
+      bubble.className = 'message ai';
+      const sender = document.createElement('div');
+      sender.className = 'sender';
+      sender.textContent = story.characters?.[0]?.name || 'AI';
+      const content = document.createElement('div');
+      bubble.append(sender, content);
+      container.appendChild(bubble);
+      container.scrollTop = container.scrollHeight;
+
+      try {
+        while (true) {
+          try {
+            const st = await api('/api/chats/' + chat.id + '/status');
+            content.textContent = st.partial || '';
+            container.scrollTop = container.scrollHeight;
+            if (!st.generating) break;
+          } catch { /* koneksi goyang, coba lagi */ }
+          await sleep(1000);
+        }
+        chat = await api('/api/chats/' + chat.id);
+      } finally {
+        bubble.remove();
+        renderMessages();
+        sending = false;
+        button.disabled = false;
+        button.textContent = 'Kirim';
+      }
+    }
+
+    // ===== CALL AI (via proxy) =====
+    async function callAI(messages, onChunk) {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages,
+          max_tokens: API_CONFIG.maxTokens,
+          temperature: API_CONFIG.temperature,
+          stream: API_CONFIG.stream
+        })
+      });
+      if (!res.ok) throw new Error((await res.text()).slice(0, 200));
+
+      if (!API_CONFIG.stream) {
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content?.trim() || '';
+      }
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '', full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const p = line.slice(6).trim();
+          if (p === '[DONE]') continue;
+          try {
+            const j = JSON.parse(p);
+            const t = j.choices?.[0]?.delta?.content;
+            if (t) { full += t; onChunk?.(t, full); }
+          } catch { }
+        }
+      }
+      return full.trim();
+    }
+
+    // ===== SEND =====
+    async function sendMessage() {
+      if (!chat || sending) return;
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      chat.messages.push({ role: 'user', content: text });
+      input.value = '';
+      autoResize();
+      await persist();
+      renderMessages();
+
+      try {
+        await startGeneration(buildMessages());
+      } catch (e) {
+        alert('Gagal: ' + e.message);
+      }
+      input.focus();
+    }
+
+    // Tinggi kolom input mengikuti isi, maksimal 30% tinggi layar
+    function autoResize() {
+      const el = document.getElementById('userInput');
+      if (!el) return;
+      const max = window.innerHeight * 0.3;
+      el.style.height = 'auto';                       // reset supaya bisa mengecil lagi
+      const h = Math.min(el.scrollHeight + 2, max);   // +2 = border atas & bawah
+      el.style.height = Math.max(h, 48) + 'px';
+      el.style.overflowY = el.scrollHeight + 2 > max ? 'auto' : 'hidden';
+    }
+    window.addEventListener('resize', autoResize);
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+
+    // ===== INIT =====
+    async function init() {
+      const params = new URLSearchParams(location.search);
+      const chatId = params.get('chat');
+      if (!chatId) {
+        document.getElementById('messages').innerHTML =
+          '<div style="text-align:center;color:#888;padding:40px">Tidak ada chat dipilih. Buka <a href="index.html" style="color:#7658dc">halaman utama</a>.</div>';
+        document.getElementById('userInput').disabled = true;
+        document.getElementById('sendBtn').disabled = true;
+        return;
+      }
+
+      try {
+        chat = await api('/api/chats/' + chatId);
+        story = await api('/api/stories/' + chat.storyId);
+      } catch (e) {
+        document.getElementById('messages').innerHTML =
+          `<div style="text-align:center;color:#ff5c7c;padding:40px">Gagal: ${escapeHtml(e.message)}</div>`;
+        return;
+      }
+
+      document.title = story.title;
+      document.getElementById('chatName').textContent = story.title + ' — ' + chat.title;
+      document.getElementById('sideName').textContent = story.characters?.[0]?.name || story.title;
+      document.getElementById('sideDescription').textContent = (story.characters?.[0]?.description || '').slice(0, 100);
+      document.getElementById('editLink').href = 'create.html?id=' + encodeURIComponent(story.id);
+
+      renderMessages();
+      refreshWallet();
+
+      const st = await api('/api/chats/' + chat.id + '/status').catch(() => null);
+      if (st?.generating) waitForJob(); // lanjut menampilkan job yang masih jalan
+    }
+
+    init();
+  </script>
+</body>
+
+</html>
