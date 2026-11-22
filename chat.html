@@ -137,6 +137,11 @@
       background: #6246bd;
     }
 
+    em.action {
+      font-style: italic;
+      opacity: .65;
+    }
+
     .sender {
       font-size: 11px;
       color: #b9b0db;
@@ -342,6 +347,23 @@ ${story.creator_prompt || '(none)'}
       return msgs;
     }
 
+    // Teks di dalam *...* ditampilkan miring & agak transparan (tanda bintang disembunyikan)
+    function renderRich(el, text) {
+      el.textContent = '';
+      const re = /\*{1,2}([^*]+?)\*{1,2}/g;
+      let last = 0, m;
+      text = String(text || '');
+      while ((m = re.exec(text)) !== null) {
+        if (m.index > last) el.appendChild(document.createTextNode(text.slice(last, m.index)));
+        const em = document.createElement('em');
+        em.className = 'action';
+        em.textContent = m[1];
+        el.appendChild(em);
+        last = re.lastIndex;
+      }
+      if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
+    }
+
     // ===== RENDER =====
     function renderMessages() {
       const c = document.getElementById('messages');
@@ -358,7 +380,7 @@ ${story.creator_prompt || '(none)'}
 
         const content = document.createElement('div');
         content.className = 'msg-content';
-        content.textContent = msg.content;
+        renderRich(content, msg.content);
 
         const actions = document.createElement('div');
         actions.className = 'msg-actions';
@@ -491,7 +513,7 @@ ${story.creator_prompt || '(none)'}
         while (true) {
           try {
             const st = await api('/api/chats/' + chat.id + '/status');
-            content.textContent = st.partial || '';
+            renderRich(content, st.partial || '');
             container.scrollTop = container.scrollHeight;
             if (!st.generating) break;
           } catch { /* koneksi goyang, coba lagi */ }
