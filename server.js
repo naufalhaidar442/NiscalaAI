@@ -116,6 +116,53 @@ function writeWallet(user, wallet) {
 }
 function hasUnlimited(wallet) { return wallet.subscriptionUntil > Date.now(); }
 
+
+// ===== MIDTRANS =====
+const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || '';
+const MIDTRANS_IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === 'true';
+const MIDTRANS_SNAP_URL = MIDTRANS_IS_PRODUCTION
+  ? 'https://app.midtrans.com/snap/v1/transactions'
+  : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+const APP_URL = (process.env.APP_URL || '').replace(/\/+$/, '');
+const SUBSCRIPTION_DAYS = 30;
+// Harga (Rupiah) ditentukan SERVER, bukan klien. UBAH sesuai harga yang kamu mau.
+const PLANS = {
+  coins_500:            { name: 'Paket Starter 500 koin',  price: 5000,  coins: 500 },
+  coins_1500:           { name: 'Paket Popular 1.500 koin', price: 12000, coins: 1500 },
+  coins_5000:           { name: 'Paket Power 5.000 koin',  price: 35000, coins: 5000 },
+  subscription_monthly: { name: 'Unlimited 30 hari',       price: 49000, days: SUBSCRIPTION_DAYS }
+};
+const ORDER_DIR = path.join(STORE, 'orders');
+ensureDir(ORDER_DIR);
+function orderFile(orderId) { return path.join(ORDER_DIR, orderId + '.json'); }
+function readOrder(orderId) {
+  if (!safeId(orderId)) return null;
+  try { return JSON.parse(fs.readFileSync(orderFile(orderId), 'utf8')); } catch { return null; }
+}
+function writeOrder(order) {
+  fs.writeFileSync(orderFile(order.orderId), JSON.stringify(order, null, 2), 'utf8');
+}
+function midtransAuthHeader() {
+  return 'Basic ' + Buffer.from(MIDTRANS_SERVER_KEY + ':').toString('base64');
+}
+function verifyMidtransSignature(n) {
+  const raw = String(n.order_id) + String(n.status_code) + String(n.gross_amount) + MIDTRANS_SERVER_KEY;
+  const expected = crypto.createHash('sha512').update(raw).digest('hex');
+  const got = String(n.signature_key || '');
+  if (expected.length !== got.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(got));
+}
+// Kredit koin/langganan. Dipanggil sekali per order (idempoten lewat order.status).
+function fulfillOrder(order) {
+  const plan = PLANS[order.plan];
+  if (!plan) return;
+  const user = { sub: order.userSub };
+  const wallet = readWallet(user);
+  if (plan.coins) wallet.coins += plan.coins;
+  if (plan.days) wallet.subscriptionUntil = Math.max(Date.now(), wallet.subscriptionUntil) + plan.days * 24 * 3600 * 1000;
+  writeWallet(user, wallet);
+}
+
 // Chat lama (data/*.json tanpa folder user) dipindah ke user PERTAMA yang login.
 async function migrateLegacy(user) {
   const entries = await fsp.readdir(DATA_DIR, { withFileTypes: true }).catch(() => []);
@@ -152,7 +199,8 @@ async function runJob(key, file, job, body) {
     const upstream = await fetch(RUNPOD_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + RUNPOD_KEY },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(180000)
     });
     if (!upstream.ok) {
       const t = await upstream.text().catch(() => '');
@@ -228,7 +276,7 @@ async function runJob(key, file, job, body) {
 }
 
 // File/folder yang TIDAK boleh diakses lewat static server
-const BLOCKED_TOP = new Set(['data', 'story', 'auth', 'node_modules']);
+const BLOCKED_TOP = new Set(['data', 'story', 'auth', 'orders', 'node_modules']);
 const BLOCKED_FILES = new Set(['server.js', 'package.json', 'package-lock.json']);
 
 const server = http.createServer(async (req, res) => {
@@ -266,6 +314,35 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
 
+    // ===== MIDTRANS NOTIFICATION (publik, diverifikasi dengan signature) =====
+    if (p === '/api/shop/notify' && req.method === 'POST') {
+      if (!MIDTRANS_SERVER_KEY) return json(res, 503, { error: 'not configured' });
+      let n;
+      try { n = JSON.parse(await readBody(req)); } catch { return json(res, 400, { error: 'bad json' }); }
+      if (!verifyMidtransSignature(n)) return json(res, 403, { error: 'invalid signature' });
+
+      const order = readOrder(String(n.order_id));
+      if (!order) return json(res, 404, { error: 'order not found' });
+      // Nominal harus sama dengan yang kita buat (cegah manipulasi)
+      if (Number(n.gross_amount) !== order.amount) {
+        console.error('[notify] nominal tidak cocok', order.orderId, n.gross_amount, order.amount);
+        return json(res, 400, { error: 'amount mismatch' });
+      }
+      const ts = n.transaction_status;
+      const paid = ts === 'settlement' || (ts === 'capture' && n.fraud_status === 'accept');
+      if (paid && order.status !== 'paid') {
+        order.status = 'paid';
+        order.paidAt = Date.now();
+        writeOrder(order);      // tandai dulu, supaya notifikasi ganda tidak menambah koin dua kali
+        fulfillOrder(order);
+        console.log(`[notify] order ${order.orderId} lunas -> ${order.plan}`);
+      } else if (!paid && ['deny', 'cancel', 'expire', 'failure'].includes(ts) && order.status === 'pending') {
+        order.status = ts;
+        writeOrder(order);
+      }
+      return json(res, 200, { ok: true });
+    }
+
     // ===== SEMUA /api LAINNYA WAJIB LOGIN =====
     let user = null;
     if (p.startsWith('/api/')) {
@@ -281,8 +358,38 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { coins: wallet.coins, subscriptionUntil: wallet.subscriptionUntil, unlimited: hasUnlimited(wallet), replyCost: AI_REPLY_COST });
     }
     if (p === '/api/shop/checkout' && req.method === 'POST') {
-      // Payment must be verified by a provider webhook before coins/subscription are credited.
-      return json(res, 503, { error: 'Pembayaran belum dikonfigurasi. Hubungkan Midtrans/Xendit dan webhook terverifikasi terlebih dahulu.' });
+      if (!MIDTRANS_SERVER_KEY) return json(res, 503, { error: 'Pembayaran belum dikonfigurasi (MIDTRANS_SERVER_KEY kosong).' });
+      let body; try { body = JSON.parse(await readBody(req)); } catch { return json(res, 400, { error: 'bad json' }); }
+      const plan = PLANS[body.plan];
+      if (!plan) return json(res, 400, { error: 'Paket tidak dikenal' });
+
+      const orderId = 'SV-' + Date.now() + '-' + crypto.randomBytes(4).toString('hex');
+      const base = APP_URL || ((req.headers['x-forwarded-proto'] || 'https') + '://' + req.headers.host);
+      const payload = {
+        transaction_details: { order_id: orderId, gross_amount: plan.price },
+        item_details: [{ id: body.plan, price: plan.price, quantity: 1, name: plan.name }],
+        customer_details: { first_name: String(user.name || 'User').slice(0, 50), email: user.email },
+        callbacks: { finish: base + '/shop.html' }
+      };
+      let data;
+      try {
+        const r = await fetch(MIDTRANS_SNAP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': midtransAuthHeader() },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(20000)
+        });
+        data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.redirect_url) {
+          console.error('[checkout] Midtrans', r.status, JSON.stringify(data).slice(0, 300));
+          return json(res, 502, { error: 'Gagal membuat transaksi pembayaran' });
+        }
+      } catch (e) {
+        console.error('[checkout]', e.message || e);
+        return json(res, 502, { error: 'Tidak bisa menghubungi Midtrans' });
+      }
+      writeOrder({ orderId, userSub: user.sub, plan: body.plan, amount: plan.price, status: 'pending', createdAt: Date.now() });
+      return json(res, 200, { redirect_url: data.redirect_url, order_id: orderId });
     }
 
     // ===== STORIES (dibaca semua user; hanya pemilik yang boleh ubah/hapus) =====
