@@ -77,7 +77,7 @@ function getSession(req) {
 }
 function setCookie(res, sid, maxAgeSec) {
   // Kalau nanti pakai HTTPS, tambahkan "; Secure"
-  res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAgeSec}${process.env.RENDER ? '; Secure' : ''}`);
+  res.setHeader('Set-Cookie', `sid=${sid}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAgeSec}${(process.env.RENDER || process.env.RAILWAY_ENVIRONMENT || process.env.SECURE_COOKIE) ? '; Secure' : ''}`);
 }
 
 async function verifyGoogle(credential) {
