@@ -4,7 +4,7 @@
 <head>
   <script src="auth.js"></script>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Chat</title>
   <style>
     * {
@@ -21,6 +21,7 @@
     .app {
       display: flex;
       height: 100vh;
+      height: 100dvh;
     }
 
     .sidebar {
@@ -229,27 +230,86 @@
       border-color: #7658dc;
     }
 
+    #walletInfo {
+      color: #aaa;
+      font-size: 12px;
+    }
+
+    .top-title {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .top-actions .btn-link {
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+
+    .top-edit {
+      display: none;
+    }
+
+    /* Layar sentuh: tombol Edit/Regenerate tidak bisa di-hover, jadi selalu tampil */
+    @media (hover: none) {
+      .msg-actions {
+        opacity: 1;
+      }
+    }
+
     @media(max-width:650px) {
       .sidebar {
-        width: 90px;
-        padding: 10px;
-      }
-
-      .brand {
-        font-size: 14px;
-      }
-
-      .character p,
-      .character h3 {
         display: none;
       }
 
-      .character {
-        padding: 10px 5px;
+      .top-edit {
+        display: block;
+      }
+
+      .lbl {
+        display: none;
+      }
+
+      .topbar {
+        padding: 10px 12px;
+      }
+
+      .topbar h3 {
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .top-actions .btn-link {
+        padding: 8px 13px;
+        font-size: 15px;
+      }
+
+      .messages {
+        padding: 14px 10px;
+        gap: 12px;
       }
 
       .message {
-        max-width: 90%;
+        max-width: 94%;
+        padding: 11px 13px;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .input-area {
+        padding: 10px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .input-area textarea {
+        font-size: 16px;
       }
     }
   </style>
@@ -270,8 +330,11 @@
 
     <main class="main">
       <header class="topbar">
-        <div><h3 id="chatName">Memuat…</h3><small id="walletInfo" style="color:#aaa">Memuat saldo…</small></div>
-        <a href="index.html" class="btn-link secondary" style="padding:8px 14px;font-size:13px">← Kembali</a>
+        <div class="top-title"><h3 id="chatName">Memuat…</h3><small id="walletInfo">Memuat saldo…</small></div>
+        <div class="top-actions">
+          <a id="editLinkTop" href="index.html" class="btn-link secondary top-edit">✏️<span class="lbl"> Edit</span></a>
+          <a href="index.html" class="btn-link secondary">←<span class="lbl"> Kembali</span></a>
+        </div>
       </header>
 
       <section class="messages" id="messages"></section>
@@ -350,18 +413,20 @@ ${story.creator_prompt || '(none)'}
     // Teks di dalam *...* ditampilkan miring & agak transparan (tanda bintang disembunyikan)
     function renderRich(el, text) {
       el.textContent = '';
-      const re = /\*{1,2}([^*]+?)\*{1,2}/g;
-      let last = 0, m;
       text = String(text || '');
+      // Pasangan * hanya dicari di dalam satu paragraf, jadi bintang nyasar tidak merusak paragraf lain
+      const re = /\*{1,2}((?:(?!\n[ \t]*\n)[^*])+?)\*{1,2}/g;
+      const plain = t => { t = t.replace(/\*/g, ''); if (t) el.appendChild(document.createTextNode(t)); };
+      let last = 0, m;
       while ((m = re.exec(text)) !== null) {
-        if (m.index > last) el.appendChild(document.createTextNode(text.slice(last, m.index)));
+        plain(text.slice(last, m.index));
         const em = document.createElement('em');
         em.className = 'action';
         em.textContent = m[1];
         el.appendChild(em);
         last = re.lastIndex;
       }
-      if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
+      plain(text.slice(last));
     }
 
     // ===== RENDER =====
@@ -513,7 +578,7 @@ ${story.creator_prompt || '(none)'}
         while (true) {
           try {
             const st = await api('/api/chats/' + chat.id + '/status');
-            renderRich(content, st.partial || '');
+            renderRich(content, st.partial || '…');
             container.scrollTop = container.scrollHeight;
             if (!st.generating) break;
           } catch { /* koneksi goyang, coba lagi */ }
@@ -634,6 +699,7 @@ ${story.creator_prompt || '(none)'}
       document.getElementById('sideName').textContent = story.characters?.[0]?.name || story.title;
       document.getElementById('sideDescription').textContent = (story.characters?.[0]?.description || '').slice(0, 100);
       document.getElementById('editLink').href = 'create.html?id=' + encodeURIComponent(story.id);
+      document.getElementById('editLinkTop').href = 'create.html?id=' + encodeURIComponent(story.id);
 
       renderMessages();
       refreshWallet();
