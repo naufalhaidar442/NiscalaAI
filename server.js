@@ -382,11 +382,12 @@ const server = http.createServer(async (req, res) => {
         data = await r.json().catch(() => ({}));
         if (!r.ok || !data.redirect_url) {
           console.error('[checkout] Midtrans', r.status, JSON.stringify(data).slice(0, 300));
-          return json(res, 502, { error: 'Gagal membuat transaksi pembayaran' });
+          const detail = [].concat(data.error_messages || data.status_message || []).join('; ');
+          return json(res, 502, { error: 'Gagal membuat transaksi pembayaran' + (MIDTRANS_IS_PRODUCTION ? '' : ` (Midtrans ${r.status}: ${detail || 'tanpa pesan'})`) });
         }
       } catch (e) {
         console.error('[checkout]', e.message || e);
-        return json(res, 502, { error: 'Tidak bisa menghubungi Midtrans' });
+        return json(res, 502, { error: 'Tidak bisa menghubungi Midtrans' + (MIDTRANS_IS_PRODUCTION ? '' : ` (${e.message || e})`) });
       }
       writeOrder({ orderId, userSub: user.sub, plan: body.plan, amount: plan.price, status: 'pending', createdAt: Date.now() });
       return json(res, 200, { redirect_url: data.redirect_url, order_id: orderId });
