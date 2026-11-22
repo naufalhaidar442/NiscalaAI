@@ -1,6 +1,280 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shop</title><script src="auth.js"></script><style>
-*{box-sizing:border-box}body{margin:0;background:#101119;color:#f3f2f8;font:15px system-ui,sans-serif}.side{position:fixed;inset:0 auto 0 0;width:230px;background:#171925;border-right:1px solid #303448;padding:25px 16px}.brand{font-size:20px;font-weight:800;margin:4px 8px 28px}.brand span{color:#a18cf5}.nav a{display:block;padding:12px;color:#bbbfd0;text-decoration:none;border-radius:9px;margin:4px 0}.nav a:hover,.nav a.active{background:#29263d;color:white}main{margin-left:230px;padding:38px;max-width:1100px}h1{margin:0 0 8px;font-size:30px}.muted{color:#999caf}.panel{background:#191b27;border:1px solid #303448;border-radius:14px;padding:22px;margin-top:18px}.row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #303448}.row:last-child{border:0}.btn{display:inline-block;background:#8065e8;color:#fff;border:0;border-radius:9px;padding:11px 16px;text-decoration:none;font-weight:700;cursor:pointer}@media(max-width:700px){.side{width:68px;padding:20px 6px}.brand{font-size:0}.brand:first-letter{font-size:20px}.nav a{font-size:0;text-align:center;padding:14px 4px}.nav a:first-letter{font-size:18px}main{margin-left:68px;padding:25px 16px}}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.pack{background:#222536;border:1px solid #3a3e52;padding:20px;border-radius:13px}.price{font-size:25px;font-weight:800;margin:12px 0}.notice{color:#f4d77a;font-size:13px;line-height:1.6}</style></head><body><aside class="side"><div class="brand">✦ Story<span>Verse</span></div><nav class="nav"><a href="index.html">▦　Discover</a><a href="history.html">◷　Riwayat Chat</a><a href="shop.html">◈　Shop</a><a href="settings.html">⚙　Setting</a><a href="account.html">◉　Account</a></nav></aside><main><h1>Shop</h1><p class="muted">Isi ulang koin atau aktifkan akses unlimited.</p><section class="panel"><div class="muted">Saldo saat ini</div><div class="price" id="balance">Memuat…</div><div class="muted" id="sub"></div></section><section class="panel"><h2>Paket Koin</h2><div class="cards"><div class="pack"><b>Starter</b><div class="price">500 koin</div><p class="muted">Sekitar 16 jawaban AI.</p><button class="btn" onclick="checkout('coins_500')">Beli paket</button></div><div class="pack"><b>Popular</b><div class="price">1.500 koin</div><p class="muted">Sekitar 50 jawaban AI.</p><button class="btn" onclick="checkout('coins_1500')">Beli paket</button></div><div class="pack"><b>Power</b><div class="price">5.000 koin</div><p class="muted">Sekitar 166 jawaban AI.</p><button class="btn" onclick="checkout('coins_5000')">Beli paket</button></div></div></section><section class="panel"><h2>Unlimited</h2><p class="muted">Chat tanpa potongan koin selama masa langganan aktif.</p><div class="price">Unlimited</div><button class="btn" onclick="checkout('subscription_monthly')">Langganan bulanan</button></section><section class="panel"><p class="notice" id="notice">Pembelian belum diaktifkan. Sistem pembayaran perlu dihubungkan ke Midtrans atau Xendit agar transaksi bisa diverifikasi dan saldo ditambahkan secara aman.</p></section></main><script>
-async function load(){const r=await fetch('/api/wallet'),w=await r.json();document.getElementById('balance').textContent=w.coins+' koin';document.getElementById('sub').textContent=w.unlimited?'Unlimited aktif sampai '+new Date(w.subscriptionUntil).toLocaleDateString('id-ID'):'Biaya per jawaban AI: 30 koin'}
-async function checkout(plan){try{const r=await fetch('/api/shop/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan})}),d=await r.json();document.getElementById('notice').textContent=d.error||'Checkout gagal'}catch(e){document.getElementById('notice').textContent=e.message}}load();
-</script></body></html>
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Shop</title>
+  <script src="auth.js"></script>
+  <style>
+    :root {
+      --bg: #101119;
+      --side: #171925;
+      --panel: #191b27;
+      --panel2: #222536;
+      --line: #303448;
+      --line2: #3a3e52;
+      --text: #f3f2f8;
+      --muted: #999caf;
+      --purple: #8065e8;
+      --purple2: #a18cf5;
+      --gold: #f4d77a;
+      --red: #ff7a93;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px system-ui, sans-serif;
+    }
+
+    /* ---------- Sidebar ---------- */
+    .side {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 230px;
+      padding: 25px 16px;
+      background: var(--side);
+      border-right: 1px solid var(--line);
+    }
+    .brand { font-size: 20px; font-weight: 800; margin: 4px 8px 28px; }
+    .brand span { color: var(--purple2); }
+    .nav a {
+      display: block;
+      margin: 4px 0;
+      padding: 12px;
+      border-radius: 9px;
+      color: #bbbfd0;
+      text-decoration: none;
+    }
+    .nav a:hover,
+    .nav a.active { background: #29263d; color: #fff; }
+
+    /* ---------- Konten ---------- */
+    main { margin-left: 230px; padding: 38px; max-width: 1100px; }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    h2 { margin: 0 0 16px; font-size: 17px; }
+    .muted { color: var(--muted); }
+
+    .panel {
+      margin-top: 18px;
+      padding: 22px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .balance { font-size: 34px; font-weight: 800; margin: 8px 0 4px; }
+    .balance.loading { color: var(--muted); }
+
+    /* ---------- Paket ---------- */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+    .pack {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 20px;
+      background: var(--panel2);
+      border: 1px solid var(--line2);
+      border-radius: 13px;
+    }
+    .pack .name { font-weight: 700; }
+    .pack .amount { font-size: 25px; font-weight: 800; margin: 6px 0 0; }
+    .pack p { margin: 0 0 12px; }
+    .pack .btn { margin-top: auto; }
+
+    .unlimited {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .unlimited p { margin: 0; max-width: 520px; }
+
+    .btn {
+      display: inline-block;
+      padding: 11px 16px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--purple);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+    }
+    .btn:hover { filter: brightness(1.1); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; filter: none; }
+    .btn:focus-visible { outline: 2px solid var(--purple2); outline-offset: 2px; }
+
+    /* ---------- Pesan status ---------- */
+    .notice { margin: 0; font-size: 13px; line-height: 1.6; color: var(--gold); }
+    .notice.error { color: var(--red); }
+
+    @media (max-width: 700px) {
+      .side { width: 68px; padding: 20px 6px; }
+      .brand { font-size: 0; }
+      .brand:first-letter { font-size: 20px; }
+      .nav a { font-size: 0; text-align: center; padding: 14px 4px; }
+      .nav a:first-letter { font-size: 18px; }
+      main { margin-left: 68px; padding: 25px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="side">
+    <div class="brand">✦ Story<span>Verse</span></div>
+    <nav class="nav">
+      <a href="index.html">▦　Discover</a>
+      <a href="history.html">◷　Riwayat Chat</a>
+      <a class="active" href="shop.html">◈　Shop</a>
+      <a href="settings.html">⚙　Setting</a>
+      <a href="account.html">◉　Account</a>
+    </nav>
+  </aside>
+
+  <main>
+    <h1>Shop</h1>
+    <p class="muted">Isi ulang koin atau aktifkan akses unlimited.</p>
+
+    <section class="panel">
+      <div class="muted">Saldo saat ini</div>
+      <div class="balance loading" id="balance">Memuat…</div>
+      <div class="muted" id="sub"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Paket koin</h2>
+      <div class="cards" id="coinPacks"></div>
+    </section>
+
+    <section class="panel unlimited">
+      <div>
+        <h2>Unlimited</h2>
+        <p class="muted">Chat tanpa potongan koin selama masa langganan aktif.</p>
+      </div>
+      <button class="btn" data-plan="subscription_monthly">Langganan bulanan</button>
+    </section>
+
+    <section class="panel">
+      <p class="notice" id="notice" role="status" aria-live="polite">
+        Pembelian belum diaktifkan. Sistem pembayaran perlu dihubungkan ke Midtrans atau Xendit
+        agar transaksi bisa diverifikasi dan saldo ditambahkan secara aman.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    // ID paket harus sama dengan yang dikenali server di /api/shop/checkout
+    const COIN_PACKS = [
+      { id: 'coins_500',  name: 'Starter', coins: 500 },
+      { id: 'coins_1500', name: 'Popular', coins: 1500 },
+      { id: 'coins_5000', name: 'Power',   coins: 5000 }
+    ];
+
+    const $ = id => document.getElementById(id);
+    const fmt = n => Number(n).toLocaleString('id-ID');
+    let replyCost = 30;
+
+    function notify(message, isError = false) {
+      const el = $('notice');
+      el.textContent = message;
+      el.classList.toggle('error', isError);
+    }
+
+    function setBusy(busy) {
+      document.querySelectorAll('[data-plan]').forEach(b => { b.disabled = busy; });
+    }
+
+    function renderPacks() {
+      $('coinPacks').replaceChildren(...COIN_PACKS.map(pack => {
+        const card = document.createElement('div');
+        card.className = 'pack';
+
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.textContent = pack.name;
+
+        const amount = document.createElement('div');
+        amount.className = 'amount';
+        amount.textContent = fmt(pack.coins) + ' koin';
+
+        const hint = document.createElement('p');
+        hint.className = 'muted';
+        hint.textContent = 'Sekitar ' + fmt(Math.floor(pack.coins / replyCost)) + ' jawaban AI.';
+
+        const button = document.createElement('button');
+        button.className = 'btn';
+        button.dataset.plan = pack.id;
+        button.textContent = 'Beli paket';
+
+        card.append(name, amount, hint, button);
+        return card;
+      }));
+    }
+
+    async function loadWallet() {
+      try {
+        const res = await fetch('/api/wallet');
+        const wallet = await res.json();
+        if (!res.ok) throw new Error(wallet.error || 'Gagal memuat saldo');
+
+        replyCost = wallet.replyCost || replyCost;
+        $('balance').classList.remove('loading');
+        $('balance').textContent = fmt(wallet.coins) + ' koin';
+        $('sub').textContent = wallet.unlimited
+          ? 'Unlimited aktif sampai ' + new Date(wallet.subscriptionUntil).toLocaleDateString('id-ID')
+          : 'Biaya per jawaban AI: ' + replyCost + ' koin';
+      } catch (e) {
+        $('balance').textContent = '—';
+        notify(e.message, true);
+      }
+      renderPacks();
+    }
+
+    async function checkout(plan) {
+      setBusy(true);
+      try {
+        const res = await fetch('/api/shop/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Checkout gagal');
+
+        // Dipakai kalau server sudah membuat transaksi (mis. Midtrans Snap) dan mengirim tautan bayar
+        if (data.redirect_url) {
+          location.href = data.redirect_url;
+          return;
+        }
+        notify('Pesanan dibuat. Saldo akan bertambah setelah pembayaran terkonfirmasi.');
+      } catch (e) {
+        notify(e.message, true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    document.addEventListener('click', e => {
+      const button = e.target.closest('[data-plan]');
+      if (button && !button.disabled) checkout(button.dataset.plan);
+    });
+
+    // Setelah kembali dari halaman pembayaran, muat ulang saldo sebentar lagi
+    if (new URLSearchParams(location.search).has('order_id')) {
+      notify('Pembayaran sedang diperiksa. Saldo akan diperbarui otomatis setelah terkonfirmasi.');
+      setTimeout(loadWallet, 5000);
+    }
+
+    loadWallet();
+  </script>
+</body>
+</html>
